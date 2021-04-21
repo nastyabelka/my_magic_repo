@@ -2,8 +2,14 @@ List of my resources
 - Elastic Load Balancer = My-magic-loud-balancer
   - Target group = My-magic-target-group
   - VPC = vpc-2bb63256
-  - Security Group = My-magic-Security-Group
 
+
+  - Security Group = My-magic-Security-Group
+    Create Security Group
+    aws ec2 create-security-group --group-name My-Super-SecurityGroup --description "My security group" --vpc-id vpc-2bb63256
+    aws ec2 authorize-security-group-ingress --group-name My-Super-SecurityGroup --protocol tcp --port 80 --cidr 0.0.0.0/0
+    aws ec2 authorize-security-group-ingress --group-name My-Super-SecurityGroup --protocol tcp --port 22 --cidr 0.0.0.0/0
+    aws ec2 authorize-security-group-ingress --group-name My-Super-SecurityGroup --protocol tcp --port 443 --cidr 0.0.0.0/0
 
 - Auto Scaling Group = My-magic-auto-scaling-group
   - T2 instacne
