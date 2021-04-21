@@ -11,6 +11,10 @@ List of my resources
     aws ec2 authorize-security-group-ingress --group-name My-Super-SecurityGroup --protocol tcp --port 22 --cidr 0.0.0.0/0
     aws ec2 authorize-security-group-ingress --group-name My-Super-SecurityGroup --protocol tcp --port 443 --cidr 0.0.0.0/0
 
+    Delete Security Group
+    aws ec2 delete-security-group --group-name My-Super-SecurityGroup
+
+
 - Auto Scaling Group = My-magic-auto-scaling-group
   - T2 instacne
   - Lauch Template = My-magic-launch-conf
