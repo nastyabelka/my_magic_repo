@@ -1,0 +1,52 @@
+List of my resources
+- Elastic Load Balancer = My-magic-loud-balancer
+  - Target group = My-magic-target-group
+  - VPC = vpc-2bb63256
+  - Security Group = My-magic-Security-Group
+
+
+- Auto Scaling Group = My-magic-auto-scaling-group
+  - T2 instacne
+  - Lauch Template = My-magic-launch-conf
+  - Security Group = My-magic-Security-Group
+
+
+- RDS
+  - db = my-magic-db
+  - read replica = my-magic-db-read
+
+
+
+- Cloud Front
+  - distribution = d1lyc1meah42w1.cloudfront.net
+Create CloudFront:
+    aws cloudfront create-distribution \
+    --origin-domain-name super-puper-bucket.s3.amazonaws.com \
+    --default-root-object index.html
+Delete CloudFront:
+    aws cloudfront delete-distribution \
+    --id EDFDVBD6EXAMPLE \
+    --if-match E2QWRUHEXAMPLE
+
+
+
+- S3
+  - bucket = my-magic-nastias-s3bucket
+Create s3 bucket v1:
+    aws s3api create-bucket --bucket super-puper-bucket --region us-east-1
+Create s3 bucket v2:
+    aws s3 mb s3://super-puper-bucket
+
+Upload files to s3 bucket:
+    aws s3 cp my-easy-site s3://super-puper-bucket/ --recursive --acl public-read-write
+
+Configure s3 bucket as a static website:
+    aws s3 website s3://super-puper-bucket/ --index-document index.html
+
+Delete s3 bucket
+    aws s3 rb s3://super-puper-bucket --force
+
+
+
+- Route 53
+  - Hosted zone = myoriginaldomanename.site
