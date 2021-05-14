@@ -6,10 +6,14 @@ List of my resources
 
   - Security Group = My-magic-Security-Group
     Create Security Group
-    aws ec2 create-security-group --group-name My-Super-SecurityGroup --description "My security group" --vpc-id vpc-2bb63256
+    aws ec2 create-security-group --group-name My-Super-SecurityGroup --description "My security group"
     aws ec2 authorize-security-group-ingress --group-name My-Super-SecurityGroup --protocol tcp --port 80 --cidr 0.0.0.0/0
     aws ec2 authorize-security-group-ingress --group-name My-Super-SecurityGroup --protocol tcp --port 22 --cidr 0.0.0.0/0
     aws ec2 authorize-security-group-ingress --group-name My-Super-SecurityGroup --protocol tcp --port 443 --cidr 0.0.0.0/0
+
+    Security group for RDS:
+    aws ec2 create-security-group --group-name My-Super-RDS-SecurityGroup --description "My security group for RDS "
+    aws ec2 authorize-security-group-ingress --group-name My-Super-RDS-SecurityGroup --protocol tcp --port 3306 --source-group My-Super-SecurityGroup
 
     Delete Security Group
     aws ec2 delete-security-group --group-name My-Super-SecurityGroup
@@ -20,19 +24,59 @@ List of my resources
   - Lauch Template = My-magic-launch-conf
   - Security Group = My-magic-Security-Group
 
+  Create a launch template:
+aws ec2 create-launch-template --launch-template-name My-Super-launch-template --version-description version1 ^
+--launch-template-data "{\"ImageId\":\"ami-0533f2ba8a1995cf9\",\"InstanceType\":\"t2.micro\",\"SecurityGroupIds\":[\"sg-086846f0e9429ae63\"]}"
+
+
+  Create a load balancer:
+aws elbv2 create-load-balancer --name My-Super-load-balancer --subnets subnet-95b42cb4 subnet-2fc05e70 --security-groups sg-086846f0e9429ae63
+
+
+Create a target group:
+aws elbv2 create-target-group --name My-super-target-group --protocol HTTP --port 80 --vpc-id vpc-3d43ed40
+
+
+Create a listener for the load balancer:
+aws elbv2 create-listener --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:345145124555:loadbalancer/app/load-balancer-cli-test/dcf437696dac6526 --protocol HTTP --port 80 --default-actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:345145124555:targetgroup/target-group-cli/26f7b021a662bc0d
+
+
+Create an auto scaling group:
+aws autoscaling create-auto-scaling-group --auto-scaling-group-name My-Super-auto-scaling-group --launch-template LaunchTemplateId=lt-08ea52d5fbe133e43 --target-group-arns arn:aws:elasticloadbalancing:us-east-1:345145124555:targetgroup/target-group-cli/26f7b021a662bc0d --health-check-type ELB --health-check-grace-period 600 --min-size 1 --max-size 3 --desired-capacity 2 --vpc-zone-identifier "subnet-95b42cb4,subnet-2fc05e70"
+
+Create an autoscaling policy:
+aws autoscaling put-scaling-policy --policy-name cpu40-target-tracking-scaling-policy --auto-scaling-group-name asg-cli --policy-type TargetTrackingScaling --target-tracking-configuration file://scaling-policy.js
+
 
 - RDS
-  - db = my-magic-db
+  - db = My-Super-db
   - read replica = my-magic-db-read
+
+Create an RDS:
+aws rds create-db-instance ^
+--db-name my-super-db ^
+--db-instance-identifier My-Super-db ^
+--db-instance-class db.t2.micro ^
+--engine mariadb ^
+--master-username admin ^
+--master-user-password password ^
+--allocated-storage 20 ^
+--availability-zone us-east-1a ^
+--db-subnet-group-name default-vpc-3d43ed40 ^
+--engine-version 10.4.13 ^
+--max-allocated-storage 1000 ^
+--no-publicly-accessible
+
+Created Read Replica for DB:
+aws rds create-db-instance-read-replica --db-instance-identifier My-Super-db-repl --source-db-instance-identifier My-Super-db
 
 
 
 - Cloud Front
   - distribution = d1lyc1meah42w1.cloudfront.net
 Create CloudFront:
-    aws cloudfront create-distribution \
-    --origin-domain-name super-puper-bucket.s3.amazonaws.com \
-    --default-root-object index.html
+    aws cloudfront create-distribution --origin-domain-name super-puper-bucket.s3.amazonaws.com
+
 Delete CloudFront:
     aws cloudfront delete-distribution \
     --id EDFDVBD6EXAMPLE \
@@ -42,9 +86,7 @@ Delete CloudFront:
 
 - S3
   - bucket = my-magic-nastias-s3bucket
-Create s3 bucket v1:
-    aws s3api create-bucket --bucket super-puper-bucket --region us-east-1
-Create s3 bucket v2:
+Create s3 bucket:
     aws s3 mb s3://super-puper-bucket
 
 Upload files to s3 bucket:
@@ -60,3 +102,7 @@ Delete s3 bucket
 
 - Route 53
   - Hosted zone = myoriginaldomanename.site
+
+Create a hosted zone:
+aws route53 create-hosted-zone --name superhostedzone.com --caller-reference 1618996726 --hosted-zone-config Comment="CLI TEST"
+aws route53 change-resource-record-sets --hosted-zone-id Z055864528N55T2QBZGQA --change-batch file://route53_cli.json
