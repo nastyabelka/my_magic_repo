@@ -7,16 +7,22 @@ List of my resources
   - Security Group = My-magic-Security-Group
     Create Security Group
     aws ec2 create-security-group --group-name My-Super-SecurityGroup --description "My security group"
+    "GroupId": "sg-084ebf1378fc7c0fa"
+
     aws ec2 authorize-security-group-ingress --group-name My-Super-SecurityGroup --protocol tcp --port 80 --cidr 0.0.0.0/0
     aws ec2 authorize-security-group-ingress --group-name My-Super-SecurityGroup --protocol tcp --port 22 --cidr 0.0.0.0/0
     aws ec2 authorize-security-group-ingress --group-name My-Super-SecurityGroup --protocol tcp --port 443 --cidr 0.0.0.0/0
 
     Security group for RDS:
     aws ec2 create-security-group --group-name My-Super-RDS-SecurityGroup --description "My security group for RDS "
+    "GroupId": "sg-08ecab96d6b0f0512"
+
     aws ec2 authorize-security-group-ingress --group-name My-Super-RDS-SecurityGroup --protocol tcp --port 3306 --source-group My-Super-SecurityGroup
+
 
     Delete Security Group
     aws ec2 delete-security-group --group-name My-Super-SecurityGroup
+    aws ec2 delete-security-group --group-name My-Super-RDS-SecurityGroup
 
 
 - Auto Scaling Group = My-magic-auto-scaling-group
@@ -25,62 +31,78 @@ List of my resources
   - Security Group = My-magic-Security-Group
 
   Create a launch template:
-aws ec2 create-launch-template --launch-template-name My-Super-launch-template --version-description version1 ^
---launch-template-data "{\"ImageId\":\"ami-0533f2ba8a1995cf9\",\"InstanceType\":\"t2.micro\",\"SecurityGroupIds\":[\"sg-086846f0e9429ae63\"]}"
+aws ec2 create-launch-template --launch-template-name My-Super-launch-template --version-description version1 --launch-template-data "{\"ImageId\":\"ami-0533f2ba8a1995cf9\",\"InstanceType\":\"t2.micro\",\"SecurityGroupIds\":[\"sg-084ebf1378fc7c0fa\"]}"
+"lt-0c5c1d34b6a212de5"
 
+Delete the launch template:
+aws ec2 delete-launch-template --launch-template-id lt-0c5c1d34b6a212de5
 
   Create a load balancer:
-aws elbv2 create-load-balancer --name My-Super-load-balancer --subnets subnet-95b42cb4 subnet-2fc05e70 --security-groups sg-086846f0e9429ae63
+aws elbv2 create-load-balancer --name My-Super-load-balancer --subnets subnet-e782ea81 subnet-d9dcabf8 --security-groups sg-084ebf1378fc7c0fa
+"arn:aws:elasticloadbalancing:us-east-1:829692045983:loadbalancer/app/My-Super-load-balancer/46a11c936049593f"
 
+Delete the load balancer:
+aws elbv2 delete-load-balancer --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:829692045983:loadbalancer/app/My-Super-load-balancer/46a11c936049593f
 
 Create a target group:
-aws elbv2 create-target-group --name My-super-target-group --protocol HTTP --port 80 --vpc-id vpc-3d43ed40
+aws elbv2 create-target-group --name My-super-target-group --protocol HTTP --port 80 --vpc-id vpc-2bb63256
+ "arn:aws:elasticloadbalancing:us-east-1:829692045983:targetgroup/My-super-target-group/cd9f4a95767a345c"
+
+Delete the target group:
+aws elbv2 delete-target-group --target-group-arn arn:aws:elasticloadbalancing:us-east-1:829692045983:targetgroup/My-super-target-group/cd9f4a95767a345c
 
 
 Create a listener for the load balancer:
-aws elbv2 create-listener --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:345145124555:loadbalancer/app/load-balancer-cli-test/dcf437696dac6526 --protocol HTTP --port 80 --default-actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:345145124555:targetgroup/target-group-cli/26f7b021a662bc0d
+aws elbv2 create-listener --load-balancer-arn arn:aws:elasticloadbalancing:us-east-1:829692045983:loadbalancer/app/My-Super-load-balancer/46a11c936049593f --protocol HTTP --port 80 --default-actions Type=forward,TargetGroupArn=arn:aws:elasticloadbalancing:us-east-1:829692045983:targetgroup/My-super-target-group/cd9f4a95767a345c
 
 
 Create an auto scaling group:
-aws autoscaling create-auto-scaling-group --auto-scaling-group-name My-Super-auto-scaling-group --launch-template LaunchTemplateId=lt-08ea52d5fbe133e43 --target-group-arns arn:aws:elasticloadbalancing:us-east-1:345145124555:targetgroup/target-group-cli/26f7b021a662bc0d --health-check-type ELB --health-check-grace-period 600 --min-size 1 --max-size 3 --desired-capacity 2 --vpc-zone-identifier "subnet-95b42cb4,subnet-2fc05e70"
+aws autoscaling create-auto-scaling-group --auto-scaling-group-name My-Super-auto-scaling-group --launch-template LaunchTemplateId=lt-0c5c1d34b6a212de5 --target-group-arns arn:aws:elasticloadbalancing:us-east-1:829692045983:targetgroup/My-super-target-group/cd9f4a95767a345c --health-check-type ELB --health-check-grace-period 600 --min-size 1 --max-size 3 --desired-capacity 2 --vpc-zone-identifier "subnet-e782ea81,subnet-d9dcabf8"
 
 Create an autoscaling policy:
-aws autoscaling put-scaling-policy --policy-name cpu40-target-tracking-scaling-policy --auto-scaling-group-name asg-cli --policy-type TargetTrackingScaling --target-tracking-configuration file://scaling-policy.js
+aws autoscaling put-scaling-policy --policy-name cpu40-target-tracking-scaling-policy --auto-scaling-group-name My-Super-auto-scaling-group --policy-type TargetTrackingScaling --target-tracking-configuration file://scaling-policy.js
 
+Delete the Autoscaling group:
+aws autoscaling delete-auto-scaling-group --auto-scaling-group-name My-Super-auto-scaling-group --force-delete
 
 - RDS
   - db = My-Super-db
   - read replica = my-magic-db-read
 
 Create an RDS:
-aws rds create-db-instance ^
---db-name my-super-db ^
---db-instance-identifier My-Super-db ^
---db-instance-class db.t2.micro ^
---engine mariadb ^
---master-username admin ^
---master-user-password password ^
---allocated-storage 20 ^
---availability-zone us-east-1a ^
---db-subnet-group-name default-vpc-3d43ed40 ^
---engine-version 10.4.13 ^
---max-allocated-storage 1000 ^
---no-publicly-accessible
+aws rds create-db-instance --db-name mysuperdb --db-instance-identifier My-Super-db --db-instance-class db.t2.micro --engine mariadb --master-username admin --master-user-password password --allocated-storage 20 --availability-zone us-east-1a --db-subnet-group-name default-vpc-2bb63256 --engine-version 10.4.13 --max-allocated-storage 1000 --no-publicly-accessible
+
+Delete RDS:
+aws rds delete-db-instance --db-instance-identifier My-Super-db --skip-final-snapshot
+
 
 Created Read Replica for DB:
 aws rds create-db-instance-read-replica --db-instance-identifier My-Super-db-repl --source-db-instance-identifier My-Super-db
+
+Delete RDS Read replica:
+aws rds promote-read-replica --db-instance-identifier My-Super-db-repl
+aws rds delete-db-instance --db-instance-identifier My-Super-db-repl --skip-final-snapshot
 
 
 
 - Cloud Front
   - distribution = d1lyc1meah42w1.cloudfront.net
 Create CloudFront:
-    aws cloudfront create-distribution --origin-domain-name super-puper-bucket.s3.amazonaws.com
+    aws cloudfront create-distribution --origin-domain-name super-puper-bucket.s3-website-us-east-1.amazonaws.com
 
 Delete CloudFront:
     aws cloudfront delete-distribution \
     --id EDFDVBD6EXAMPLE \
     --if-match E2QWRUHEXAMPLE
+
+Delete Cloudfront distribution:
+aws cloudfront get-distribution --id E284FE1AVCY1DG
+E135H43STUF232
+aws cloudfront get-distribution-config --id E284FE1AVCY1DG > dist-config-disable.json
+aws cloudfront update-distribution --id E284FE1AVCY1DG --if-match E135H43STUF232 --distribution-config file://dist-config-disable.json
+aws cloudfront get-distribution --id E284FE1AVCY1DG
+E2OFT666PIF8AZ
+aws cloudfront delete-distribution --id E284FE1AVCY1DG --if-match E2OFT666PIF8AZ
 
 
 
@@ -104,5 +126,41 @@ Delete s3 bucket
   - Hosted zone = myoriginaldomanename.site
 
 Create a hosted zone:
-aws route53 create-hosted-zone --name superhostedzone.com --caller-reference 1618996726 --hosted-zone-config Comment="CLI TEST"
-aws route53 change-resource-record-sets --hosted-zone-id Z055864528N55T2QBZGQA --change-batch file://route53_cli.json
+aws route53 create-hosted-zone --name myoriginaldomanename.site --caller-reference 0737338 --hosted-zone-config Comment="SUPER CLI2"
+ "Id": "/hostedzone/Z07935562GRAZIAODMWTR", Z35SXDOTRQ7X7K
+aws route53 change-resource-record-sets --hosted-zone-id Z07935562GRAZIAODMWTR --change-batch file://route53records-both.json
+"Id": "/change/C0742246W017ABG6DLKG",
+
+Delete route53 records:
+aws route53 change-resource-record-sets --hosted-zone-id Z07935562GRAZIAODMWTR --change-batch file://route53records-both-delete.json
+
+Delete route53 hosted zone:
+aws route53 delete-hosted-zone --id Z07935562GRAZIAODMWTR
+
+
+
+
+
+DELETE list:
+
+Delete S3
+
+Delete the Autoscaling group
+
+Delete the launch template
+
+Delete the load balancer
+
+Delete the target group
+
+Delete RDS Read replica
+
+Delete RDS
+
+Delete route53 records
+
+Delete route53 hosted zone
+
+Delete security groups
+
+Delete Cloudfront distribution
