@@ -89,20 +89,15 @@ aws rds delete-db-instance --db-instance-identifier My-Super-db-repl --skip-fina
   - distribution = d1lyc1meah42w1.cloudfront.net
 Create CloudFront:
     aws cloudfront create-distribution --origin-domain-name super-puper-bucket.s3-website-us-east-1.amazonaws.com
+	arn:aws:cloudfront::829692045983:distribution/E2YGKUUF5IZ3NY
+  id E2YGKUUF5IZ3NY
+  d13p6vg3uydzb0.cloudfront.net
 
 Delete CloudFront:
     aws cloudfront delete-distribution \
-    --id EDFDVBD6EXAMPLE \
+    --id E2YGKUUF5IZ3NY \
     --if-match E2QWRUHEXAMPLE
 
-Delete Cloudfront distribution:
-aws cloudfront get-distribution --id E284FE1AVCY1DG
-E135H43STUF232
-aws cloudfront get-distribution-config --id E284FE1AVCY1DG > dist-config-disable.json
-aws cloudfront update-distribution --id E284FE1AVCY1DG --if-match E135H43STUF232 --distribution-config file://dist-config-disable.json
-aws cloudfront get-distribution --id E284FE1AVCY1DG
-E2OFT666PIF8AZ
-aws cloudfront delete-distribution --id E284FE1AVCY1DG --if-match E2OFT666PIF8AZ
 
 
 
