@@ -23,14 +23,17 @@ Parameters:
     Description: "Enter the Max Size for the ASG"
     Type: String
     AllowedValues: [1, 2, 3]
+    Default: "3"
   MinSizeASG:
     Description: "Enter the Min Size for the ASG"
     Type: String
     AllowedValues: [1, 2, 3]
+    Default: "1"
   DesiredCapacityASG:
     Description: "Enter the desired capacity for the ASG"
     Type: String
     AllowedValues: [1, 2, 3]
+    Default: "1"
 
   VpcCIDR:
     Description: Please enter the IP range (CIDR notation) for this VPC
@@ -52,6 +55,44 @@ Parameters:
     Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
     Type: String
     Default: 10.192.20.0/24
+
+  PrivateSubnet2CIDR:
+    Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
+    Type: String
+    Default: 10.192.40.0/24
+
+#Credentials for DB user
+  DBName:
+    Default: mydbname
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern : '[a-zA-Z][a-zA-Z0-9]*'
+    Description : DB name
+  DBUser :
+    Default: admin
+    NoEcho: true
+    Type: String
+    MinLength: '1'
+    MaxLength: '16'
+    AllowedPattern : '[a-zA-Z][a-zA-Z0-9]*'
+    Description : DB admin user
+  DBPassword :
+    Default: 12345678
+    NoEcho: true
+    Type: String
+    MinLength: '8'
+    MaxLength: '41'
+    AllowedPattern : '[a-zA-Z0-9]*'
+    Description : DB admin password
+  DBAllocatedStorage:
+    Default: '20'
+    Description: The size of the database (GiB)
+    Type: Number
+    MinValue: '5'
+    MaxValue: '1024'
+    ConstraintDescription: must be between 20 and 65536 GiB
+
 Mappings:
   AWSRegionArch2AMI:
     us-east-1:
@@ -111,8 +152,19 @@ Resources:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
-      AvailabilityZone: !Select [ 0, !GetAZs  '' ]
+      AvailabilityZone: "us-east-1a"
       CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Subnet2 (AZ1)
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: "us-east-1b"
+      CidrBlock: !Ref PrivateSubnet2CIDR
       MapPublicIpOnLaunch: false
       Tags:
         - Key: Name
@@ -126,13 +178,24 @@ Resources:
     Properties:
       Domain: vpc
 
-
-
   NatGateway1:
     Type: AWS::EC2::NatGateway
     Properties:
       AllocationId: !GetAtt NatGateway1EIP.AllocationId
       SubnetId: !Ref PublicSubnet1
+
+
+  NatGateway2EIP:
+      Type: AWS::EC2::EIP
+      DependsOn: InternetGatewayAttachment
+      Properties:
+        Domain: vpc
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
 
 
 
@@ -173,6 +236,13 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub ${EnvironmentName} Private Routes (AZ1)
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName} Private Routes (AZ1)
 
   DefaultPrivateRoute1:
     Type: AWS::EC2::Route
@@ -180,12 +250,23 @@ Resources:
       RouteTableId: !Ref PrivateRouteTable1
       DestinationCidrBlock: 0.0.0.0/0
       NatGatewayId: !Ref NatGateway1
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
 
   PrivateSubnet1RouteTableAssociation:
     Type: AWS::EC2::SubnetRouteTableAssociation
     Properties:
       RouteTableId: !Ref PrivateRouteTable1
       SubnetId: !Ref PrivateSubnet1
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
 
 
   NoIngressSecurityGroup:
@@ -307,6 +388,9 @@ Resources:
 
   RDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
+    DependsOn:
+    - PrivateSubnet1
+    - PrivateSubnet2
     Properties:
       GroupName: "rds-sg"
       GroupDescription: "Allow 3306 to client host"
@@ -335,7 +419,7 @@ Resources:
             #!/bin/bash -xe
 
             yum update -y
-            yum install -y httpd24
+            yum install -y httpd
             echo "Welcome from the instance $(hostname -f)" > /var/www/html/index.html
             service httpd start
 
@@ -377,12 +461,11 @@ Resources:
         - !Ref PublicSubnet2
       LoadBalancerNames:
         - !Ref LoadBalancer
-
   ScaleUpPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
       AdjustmentType: ChangeInCapacity
-      AutoScalingGroupName: !Ref ASG
+      AutoScalingGroupName: !Ref ApplicationAsg
       Cooldown: '60'
       ScalingAdjustment: 1
 
@@ -390,11 +473,11 @@ Resources:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
       AdjustmentType: ChangeInCapacity
-      AutoScalingGroupName: !Ref ASG
+      AutoScalingGroupName: !Ref ApplicationAsg
       Cooldown: '60'
       ScalingAdjustment: -1
 
-  MemoryAlarmHigh:
+  CPUAlarmHigh:
     Type: AWS::CloudWatch::Alarm
     Properties:
       EvaluationPeriods: 1
@@ -407,27 +490,94 @@ Resources:
       Namespace: ASG
       Dimensions:
       - Name: ApplicationAsg
-        Value: !Ref ASG
+        Value: !Ref ApplicationAsg
       ComparisonOperator: GreaterThanThreshold
       MetricName: CPUUtilization
 
-MemoryAlarmLow:
-  Type: AWS::CloudWatch::Alarm
-  Properties:
-    EvaluationPeriods: 1
-    Statistic: Average
-    Threshold: 30
-    AlarmDescription: Go in Alarm is memory is lower than 30% for 60 seconds
-    Period: 60
-    AlarmActions:
-    - Ref: ScaleDownPolicy
-    Namespace: ASG
-    Dimensions:
-    - Name: ApplicationAsg
-      Value: !Ref ASG
-    ComparisonOperator: LessThanThreshold
-    MetricName: CPUUtilization
+  CPUAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      EvaluationPeriods: 1
+      Statistic: Average
+      Threshold: 30
+      AlarmDescription: Go in Alarm is memory is lower than 30% for 60 seconds
+      Period: 60
+      AlarmActions:
+      - Ref: ScaleDownPolicy
+      Namespace: ASG
+      Dimensions:
+      - Name: ApplicationAsg
+        Value: !Ref ApplicationAsg
+      ComparisonOperator: LessThanThreshold
+      MetricName: CPUUtilization
 
+# Route 53
+  HostedZone:
+    Type: "AWS::Route53::HostedZone"
+    Properties:
+      HostedZoneConfig:
+        Comment: 'My hosted zone for myoriginaldomanename.site'
+      Name: 'myoriginaldomanename.site'
+
+  DNSRecord1:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId : !GetAtt HostedZone.Id
+      Name: www.myoriginaldomanename.site
+      ResourceRecords:
+      - myoriginaldomanename.site
+      TTL: 300
+      Type: CNAME
+
+  DNSRecordCloudFront:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneId: !Ref HostedZone
+      RecordSets:
+        - Name: myoriginaldomanename.site
+          Type: A
+          AliasTarget:
+            HostedZoneId: !GetAtt 'LoadBalancer.CanonicalHostedZoneNameID'
+            DNSName: !GetAtt 'LoadBalancer.DNSName'
+
+# RDS
+
+  myDBSubnetGroup: 
+    Type: AWS::RDS::DBSubnetGroup
+    DependsOn:
+    - PrivateSubnet1RouteTableAssociation
+    - PrivateSubnet1
+    - PrivateSubnet2
+    - PrivateSubnet2RouteTableAssociation
+    Properties: 
+      DBSubnetGroupDescription: DBSubnetGroup for my DBinstance
+      SubnetIds: 
+      - !Ref PrivateSubnet1
+      - !Ref PrivateSubnet2
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    DependsOn:
+    - myDBSubnetGroup
+    Properties:
+      DBName:
+        Ref: DBName
+      Engine: mariadb
+      MasterUsername:
+        Ref: DBUser
+      DBInstanceClass: db.t2.micro
+      AllocatedStorage:
+        Ref: DBAllocatedStorage
+      MasterUserPassword:
+        Ref: DBPassword
+      VPCSecurityGroups:
+      - !GetAtt RDSSecurityGroup.GroupId
+      DBSubnetGroupName:
+        Ref: myDBSubnetGroup
+  ReadReplicaDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: read-DBInstance
+      SourceDBInstanceIdentifier: !Ref DBInstance
 Outputs:
 
   VPC:
