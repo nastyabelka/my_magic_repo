@@ -422,6 +422,23 @@ Resources:
             yum install -y httpd
             echo "Welcome from the instance $(hostname -f)" > /var/www/html/index.html
             service httpd start
+            cd ~
+            mkdir -p .aws
+            cd .aws
+            echo '[default]' > config
+            echo 'region = us-east-1' >> config
+            echo '[default]' > credentials
+            echo 'aws_access_key_id = "!Ref PublishCredentials"' >> credentials
+            echo 'aws_secret_access_key = "!GetAtt PublishCredentials.SecretAccessKey"' >> credentials
+            cd ~
+            aws s3 ls "!Ref S3Bucket" > test.txt
+            wget https://raw.githubusercontent.com/fongakahate/ui_config/main/test.sh
+            chmod +x test.sh
+            wget https://github.com/fongakahate/ui_config/raw/main/cloudfrontsite.tar.gz
+            tar -zxf cloudfrontsite.tar.gz
+            ./test.sh
+            cd cloudfront_site
+            aws s3 cp ./ s3://"!Ref S3Bucket" --recursive --acl public-read"
 
   LoadBalancer:
     Type: AWS::ElasticLoadBalancing::LoadBalancer
