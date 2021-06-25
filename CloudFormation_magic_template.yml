@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Static website hosting with S3 and CloudFront'
+Description: 'Tamplate for mentoring program'
 
 Parameters:
 
@@ -432,9 +432,9 @@ Resources:
             echo 'aws_secret_access_key = ${PublishCredentials.SecretAccessKey}' >> credentials
             cd ~
             aws s3 ls ${S3Bucket} > test.txt
-            wget https://raw.githubusercontent.com/fongakahate/ui_config/main/test.sh
+            wget https://raw.githubusercontent.com/nastyabelka/my_magic_repo/master/test.sh
             chmod +x test.sh
-            wget https://github.com/fongakahate/ui_config/raw/main/cloudfrontsite.tar.gz
+            wget https://github.com/nastyabelka/my_magic_repo/raw/master/cloudfrontsite.tar.gz
             tar -zxf cloudfrontsite.tar.gz
             ./test.sh
             cd cloudfront_site
@@ -478,6 +478,7 @@ Resources:
         - !Ref PublicSubnet2
       LoadBalancerNames:
         - !Ref LoadBalancer
+
   ScaleUpPolicy:
     Type: AWS::AutoScaling::ScalingPolicy
     Properties:
@@ -559,16 +560,16 @@ Resources:
 
 # RDS
 
-  myDBSubnetGroup: 
+  myDBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     DependsOn:
     - PrivateSubnet1RouteTableAssociation
     - PrivateSubnet1
     - PrivateSubnet2
     - PrivateSubnet2RouteTableAssociation
-    Properties: 
+    Properties:
       DBSubnetGroupDescription: DBSubnetGroup for my DBinstance
-      SubnetIds: 
+      SubnetIds:
       - !Ref PrivateSubnet1
       - !Ref PrivateSubnet2
   DBInstance:
@@ -632,12 +633,6 @@ Outputs:
   BucketUrl:
     Description: 'S3 Bucket Url'
     Value: !GetAtt 'S3Bucket.WebsiteURL'
-  AccessKeyId:
-    Description: 'S3 Access Key'
-    Value: !Ref PublishCredentials
-  AccessKeySecret:
-    Description: 'S3 Secret Key'
-    Value: !GetAtt PublishCredentials.SecretAccessKey
   DistributionId:
     Description: 'CloudFront Distribution ID'
     Value: !Ref CloudFrontDistribution
